@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>우리집 가계부</title>
+  <link rel="stylesheet" href="css/mb-style.css">
+</head>
+<body>
+  <div class="mb-layout">
+    <nav class="mb-sidebar" id="nav"></nav>
+    <main class="mb-container" id="app"></main>
+  </div>
+
+  <!-- supabase-js v2 + Chart.js (CDN) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="js/mb-config.js"></script>
+  <script src="js/mb-gate.js"></script>
+  <script src="js/mb-core.js"></script>
+  <script src="js/render/nav.js"></script>
+  <script src="js/render/dashboard.js"></script>
+  <script>
+    (async () => {
+      const creds = await MB.gate.init();   // 가족 코드 게이트 통과까지 대기
+      MB.db.init(creds);
+      try {
+        MB.render.nav.mount(
+          document.getElementById('nav'),
+          document.getElementById('app'),
+        );
+      } catch (e) {
+        document.getElementById('app').innerHTML =
+          '<div class="mb-empty">데이터를 불러오지 못했어요. 접속 정보를 확인해 주세요.<br><br>' +
+          '<button class="mb-chip" onclick="MB.gate.reset()">접속 정보 다시 입력</button></div>';
+        console.error(e);
+      }
+    })();
+  </script>
+</body>
+</html>

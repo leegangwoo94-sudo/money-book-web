@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>가계부 배포 도구 — 접속정보 암호화</title>
+  <link rel="stylesheet" href="css/mb-style.css">
+  <style>
+    .tool { max-width: 560px; margin: 40px auto; padding: 0 16px; }
+    textarea {
+      width: 100%; height: 150px; background: var(--surface-2);
+      border: 1px solid var(--border); border-radius: 10px;
+      color: var(--text); padding: 12px; font-size: 12px; font-family: monospace;
+    }
+  </style>
+</head>
+<body>
+  <div class="tool">
+    <div class="mb-gate-card" style="width:100%">
+      <h2>🔐 접속정보 암호화 도구 (관리자용)</h2>
+      <p>배포 전에 한 번만 사용합니다. 생성된 블롭을 <b>js/mb-config.js</b>의
+         <code>encryptedCreds</code>에 붙여넣으면, 가족들은 <b>가족 코드만으로</b> 접속할 수 있어요.<br>
+         이 페이지는 아무것도 전송하지 않습니다 (전부 브라우저 안에서 처리).</p>
+      <input id="url" type="text" placeholder="Supabase URL (https://…)">
+      <input id="key" type="password" placeholder="anon 공개 키">
+      <input id="code" type="text" placeholder="가족 코드 (가족에게 알려줄 암호)">
+      <button id="gen">블롭 생성</button>
+      <p style="margin-top:16px">결과 (전체 복사):</p>
+      <textarea id="out" readonly placeholder="여기에 결과가 나와요"></textarea>
+    </div>
+  </div>
+
+  <script src="js/mb-config.js"></script>
+  <script src="js/mb-gate.js"></script>
+  <script>
+    document.getElementById('gen').addEventListener('click', async () => {
+      const out = document.getElementById('out');
+      try {
+        if (!window.crypto || !window.crypto.subtle) {
+          out.value = '⚠️ 이 환경에서는 암호화를 쓸 수 없어요.\n'
+            + '파일을 직접 열지 말고 http://127.0.0.1:8787/setup.html 주소로 열어주세요.';
+          return;
+        }
+        const url = document.getElementById('url').value.trim().replace(/\/$/, '');
+        const key = document.getElementById('key').value.trim();
+        const code = document.getElementById('code').value.trim();
+        if (!url || !key || !code) { out.value = '⚠️ 세 칸을 모두 입력해 주세요.'; return; }
+        out.value = '생성 중…';
+        const blob = await MB.gate.encryptCreds(code, { url, key });
+        out.value = JSON.stringify(blob, null, 2);
+      } catch (e) {
+        out.value = '⚠️ 오류: ' + (e && e.message ? e.message : e);
+      }
+    });
+  </script>
+</body>
+</html>

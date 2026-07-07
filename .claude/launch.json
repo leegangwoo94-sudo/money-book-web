@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "money-book-web",
+      "runtimeExecutable": "C:\\flutter\\bin\\dart.bat",
+      "runtimeArgs": ["tools/serve.dart"],
+      "port": 8787
+    }
+  ]
+}
