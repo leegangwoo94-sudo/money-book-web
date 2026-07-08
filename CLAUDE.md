@@ -17,6 +17,12 @@
   - `js/mb-core.js` — MB.db(클라이언트 싱글턴)/MB.api(fetchByRange·fetchMembers·lastSynced·aggregate)/MB.period(정산기간, 앱과 동일 로직)/MB.format
   - `js/render/nav.js` — 사이드바 + 페이지 레지스트리. **새 메뉴 추가 = 렌더 파일 만들고 `MB.registerPage({id,icon,label,mount})` 한 줄**
   - `js/render/dashboard.js` — 가계부 페이지 (요약카드 4개, 도넛/막대 차트, 거래내역 필터 리스트)
+  - `js/render/portfolio.js` + `js/mb-portfolio.js`(MB.pf) + `js/stocks-kr.js` — 포트폴리오 페이지 (2026-07-08).
+    invest_trades에서 보유종목을 이동평균으로 계산(앱과 동일 로직), 야후 파이낸스 시세/환율(KRW=X)을
+    CORS 프록시 폴백 체인(allorigins→corsproxy→codetabs)으로 조회, localStorage 10분 캐시.
+    국내 종목명→야후 심볼 맵은 stocks-kr.js(3,744종목, 앱 assets/stocks.json과 같은 원천이라 이름 1:1 매칭).
+    연간 예상배당 = 야후 최근 1년 주당 배당 × 수량. '실제 배당' = transactions 수입 중 카테고리/메모에 '배당' 포함 합계.
+    시세 실패 종목은 평단으로 표시(※ 마크). 모바일에서 표는 .mb-table-wrap 내부 스크롤
 - 모바일(≤768px): 사이드바가 상단 가로 메뉴로 자동 전환
 - 접속정보 변경/가족 코드 변경 시: setup.html로 새 블롭 생성 → mb-config.js 교체 → push
 

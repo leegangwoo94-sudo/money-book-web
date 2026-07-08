@@ -93,7 +93,8 @@ body {
   }
   .mb-sidebar .side-logo { padding: 0 10px 0 4px; font-size: 15px; }
   .mb-nav-item { margin-bottom: 0; padding: 8px 12px; font-size: 14px; }
-  .mb-container { padding: 20px 16px 80px; }
+  /* width 고정: 넓은 내용(표 등)은 컨테이너를 늘리지 말고 자체 스크롤 */
+  .mb-container { padding: 20px 16px 80px; width: 100%; max-width: 100%; }
 }
 
 /* ── 헤더 ── */
@@ -314,6 +315,66 @@ body {
   font-size: 14px;
   font-weight: 500;
   margin-left: 8px;
+}
+
+/* ── 포트폴리오 ── */
+.mb-table-wrap {
+  overflow-x: auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.mb-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  min-width: 900px;
+}
+
+.mb-table th {
+  color: var(--text-dim);
+  font-weight: 600;
+  font-size: 13px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.mb-table td {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.mb-table th:nth-child(-n+3), .mb-table td:nth-child(-n+3) { text-align: left; }
+.mb-table tr:last-child td { border-bottom: none; }
+.mb-table .pf-name { font-weight: 700; }
+
+.pf-badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+
+.pf-badge.us { background: rgba(78,156,245,.15); color: #4E9CF5; }
+.pf-badge.kr { background: rgba(248,113,113,.15); color: #F87171; }
+
+.mb-chart-card.wide { grid-column: 1 / -1; }
+
+.pf-note {
+  color: var(--text-dim);
+  font-size: 12.5px;
+  line-height: 1.7;
+  margin-top: 24px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 18px;
 }
 
 /* ── 게이트(가족 코드) ── */
