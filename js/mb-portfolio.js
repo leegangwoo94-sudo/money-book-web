@@ -6,13 +6,27 @@ MB.pf = (() => {
   const TABLE = 'invest_trades';
   const QUOTE_TTL = 10 * 60 * 1000; // 시세 캐시 10분
 
-  // 야후는 CORS를 막으므로 공개 프록시 폴백 체인 사용 (직접 → 프록시들)
-  const PROXIES = [
-    (u) => u,
-    (u) => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
-    (u) => `https://corsproxy.io/?url=${encodeURIComponent(u)}`,
-    (u) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
-  ];
+  // 야후/네이버는 CORS를 막으므로 프록시 폴백 체인 사용
+  // 1순위: 우리 Supabase Edge Function 'proxy' (supabase/functions/proxy/index.ts — 안정적)
+  // 이후: 직접 → 공개 프록시들 (Edge Function 미배포 시 폴백)
+  function proxyChain() {
+    const chain = [];
+    try {
+      const creds = JSON.parse(localStorage.getItem(MB.config.storageKeys.creds));
+      if (creds?.url) {
+        chain.push({
+          wrap: (u) => `${creds.url}/functions/v1/proxy?url=${encodeURIComponent(u)}`,
+          headers: { apikey: creds.key, Authorization: `Bearer ${creds.key}` },
+        });
+      }
+    } catch { /* 게이트 통과 전 */ }
+    chain.push(
+      { wrap: (u) => u },
+      { wrap: (u) => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}` },
+      { wrap: (u) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}` },
+    );
+    return chain;
+  }
 
   // ── 클라우드 조회 ──────────────────────────────────────────
   async function fetchTrades(member = null) {
@@ -82,19 +96,25 @@ MB.pf = (() => {
 
   // ── 야후 시세 ──────────────────────────────────────────────
   async function fetchJson(url) {
-    for (const wrap of PROXIES) {
-      try {
-        const res = await fetch(wrap(url), { signal: AbortSignal.timeout(9000) });
-        if (!res.ok) continue;
-        return await res.json();
-      } catch { /* 다음 프록시로 폴백 */ }
+    // 2회전: 일시적 실패(공개 프록시 rate limit 등)에 한 번 더 기회
+    for (let round = 0; round < 2; round++) {
+      for (const p of proxyChain()) {
+        try {
+          const res = await fetch(p.wrap(url), {
+            headers: p.headers,
+            signal: AbortSignal.timeout(round === 0 ? 8000 : 12000),
+          });
+          if (!res.ok) continue;
+          return await res.json();
+        } catch { /* 다음 프록시로 폴백 */ }
+      }
     }
     throw new Error(`시세 조회 실패: ${url}`);
   }
 
-  // 현재가 + 최근 1년 주당 배당 합계
+  // 현재가 + 최근 1년 배당 (합계와 회차별 날짜·금액)
   async function quote(symbol) {
-    const cacheKey = `mb.quote.${symbol}`;
+    const cacheKey = `mb.quote2.${symbol}`;
     try {
       const c = JSON.parse(localStorage.getItem(cacheKey));
       if (c && Date.now() - c.t < QUOTE_TTL) return c.v;
@@ -106,9 +126,12 @@ MB.pf = (() => {
     const r = json?.chart?.result?.[0];
     const price = r?.meta?.regularMarketPrice;
     if (typeof price !== 'number') throw new Error(`시세 없음: ${symbol}`);
-    const div12m = Object.values(r.events?.dividends ?? {})
-      .reduce((s, d) => s + (d.amount ?? 0), 0);
-    const v = { price, div12m };
+    const divEvents = Object.values(r.events?.dividends ?? {})
+      .filter((d) => typeof d.amount === 'number' && d.date)
+      .map((d) => ({ date: d.date * 1000, amount: d.amount }))
+      .sort((a, b) => a.date - b.date);
+    const div12m = divEvents.reduce((s, d) => s + d.amount, 0);
+    const v = { price, div12m, divEvents, prevClose: r?.meta?.chartPreviousClose };
     try { localStorage.setItem(cacheKey, JSON.stringify({ t: Date.now(), v })); } catch { /* 무시 */ }
     return v;
   }
@@ -116,6 +139,61 @@ MB.pf = (() => {
   // USD/KRW 환율
   async function fx() {
     return (await quote('KRW=X')).price;
+  }
+
+  // 배당주기 판별 — 횟수가 아닌 지급 간격 기준 (최근 상장 종목도 정확)
+  function divFrequency(events) {
+    if (!events || events.length === 0) return null;
+    if (events.length === 1) return '연배당';
+    const gaps = [];
+    for (let i = 1; i < events.length; i++) {
+      gaps.push((events[i].date - events[i - 1].date) / 86400000);
+    }
+    gaps.sort((a, b) => a - b);
+    const median = gaps[Math.floor(gaps.length / 2)];
+    if (median < 45) return '월배당';
+    if (median < 135) return '분기배당';
+    if (median < 240) return '반기배당';
+    return '연배당';
+  }
+
+  // 가격 시계열 (ETF 비교 차트용) — close: 가격, adj: 배당 재투자 반영(TR)
+  const seriesCache = new Map();
+  async function series(symbol, range = '1y') {
+    const key = `${symbol}|${range}`;
+    const cached = seriesCache.get(key);
+    if (cached && Date.now() - cached.t < QUOTE_TTL) return cached.v;
+
+    const url = 'https://query1.finance.yahoo.com/v8/finance/chart/'
+      + `${encodeURIComponent(symbol)}?range=${range}&interval=1d`;
+    const json = await fetchJson(url);
+    const r = json?.chart?.result?.[0];
+    if (!r?.timestamp) throw new Error(`시계열 없음: ${symbol}`);
+    const close = r.indicators?.quote?.[0]?.close ?? [];
+    const adj = r.indicators?.adjclose?.[0]?.adjclose ?? close;
+    const pad = (n) => String(n).padStart(2, '0');
+    const dates = r.timestamp.map((t) => {
+      const d = new Date(t * 1000);
+      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    });
+    const v = { dates, close, adj, meta: r.meta };
+    seriesCache.set(key, { t: Date.now(), v });
+    return v;
+  }
+
+  // 국내 ETF 상세 (네이버 모바일 API — 운용사/순자산/총보수/구성종목/분배 정보)
+  const naverCache = new Map();
+  async function naverEtf(code) {
+    const cached = naverCache.get(code);
+    if (cached && Date.now() - cached.t < QUOTE_TTL) return cached.v;
+    const base = `https://m.stock.naver.com/api/stock/${code}`;
+    const [basic, analysis] = await Promise.all([
+      fetchJson(`${base}/basic`),
+      fetchJson(`${base}/etfAnalysis`),
+    ]);
+    const v = { basic, analysis };
+    naverCache.set(code, { t: Date.now(), v });
+    return v;
   }
 
   // ── 종목 검색 (stocks-all.js 데이터 — 앱의 검색과 동일 원천) ──
@@ -207,5 +285,6 @@ MB.pf = (() => {
   return {
     fetchTrades, fetchMembers, lastSynced, fetchDividendIncome,
     computeHoldings, symbolFor, quote, fx, tax, searchStocks,
+    series, naverEtf, divFrequency,
   };
 })();

@@ -120,10 +120,12 @@ MB.render.portfolio = (() => {
         const q = await MB.pf.quote(sym);
         h.price = q.price;
         h.div12m = q.div12m;
+        h.divEvents = q.divEvents ?? [];
         h.hasQuote = true;
       } catch {
         h.price = h.avg;
         h.div12m = 0;
+        h.divEvents = [];
         h.hasQuote = false;
       }
     }));
@@ -135,10 +137,13 @@ MB.render.portfolio = (() => {
         || null;
       try {
         if (!sym) throw new Error('심볼 없음');
-        h.price = (await MB.pf.quote(sym)).price;
+        const q = await MB.pf.quote(sym);
+        h.price = q.price;
+        h.divEvents = q.divEvents ?? [];
         h.hasQuote = true;
       } catch {
         h.price = Number(h.avg_price);
+        h.divEvents = [];
         h.hasQuote = false;
       }
     }));
@@ -235,6 +240,8 @@ MB.render.portfolio = (() => {
         sub: '연금저축 · IRP · ISA 합계',
       }),
     ].join('');
+
+    renderDividends(root, { holdings, taxHoldings: tax.holdings ?? [], usdKrw });
 
     // 비중 도넛
     donut(root.querySelector('#pf-weight'),
@@ -344,6 +351,104 @@ MB.render.portfolio = (() => {
       시세는 야후 파이낸스 기준(10분 캐시)이며, 실제 배당은 가계부 앱의 수입 기록 중
       카테고리나 메모에 '배당'이 포함된 항목을 합산합니다.
       ${noQuote.length > 0 ? `<br>※ 시세 조회 실패(평단으로 표시): ${noQuote.map((h) => h.name).join(', ')}` : ''}`;
+  }
+
+  // ── 배당 수입 섹션 (월별 예상 추이 · 배당주기 분포 · 최근 배당) ──
+  function renderDividends(root, { holdings, taxHoldings, usdKrw }) {
+    // 일반투자 + 절세계좌 보유종목을 합쳐 배당 원천으로 사용
+    const sources = [
+      ...holdings.map((h) => ({
+        name: h.name, currency: h.currency, qty: h.qty,
+        valuation: h.valuationKrw, divEvents: h.divEvents ?? [],
+      })),
+      ...taxHoldings.map((h) => ({
+        name: h.name, currency: h.currency, qty: Number(h.quantity),
+        valuation: h.valuationKrw ?? 0, divEvents: h.divEvents ?? [],
+      })),
+    ];
+    const rate = (cur) => (cur === 'USD' ? (usdKrw ?? 0) : 1);
+
+    // 월별 예상 배당 (최근 1년 실제 지급월 기준)
+    const monthly = Array(12).fill(0);
+    for (const s of sources) {
+      for (const e of s.divEvents) {
+        monthly[new Date(e.date).getMonth()] += e.amount * s.qty * rate(s.currency);
+      }
+    }
+    bars(root.querySelector('#pf-div-monthly'),
+      Array.from({ length: 12 }, (_, i) => `${String(i + 1).padStart(2, '0')}월`),
+      [{
+        label: '예상 배당(₩)',
+        data: monthly.map((v) => Math.round(v)),
+        backgroundColor: monthly.map((_, i) =>
+          i === new Date().getMonth() ? '#4ADE80' : '#2DD4BF'),
+        borderRadius: 4,
+      }], won);
+
+    // 배당주기 분포 (평가금액 비중) — 지급 간격 기반 판별
+    const freqOf = (events) => MB.pf.divFrequency(events) ?? '배당없음';
+    const freqSum = { 월배당: 0, 분기배당: 0, 반기배당: 0, 연배당: 0, 배당없음: 0 };
+    let totalV = 0;
+    for (const s of sources) {
+      freqSum[freqOf(s.divEvents)] += s.valuation;
+      totalV += s.valuation;
+    }
+    const freqWrap = root.querySelector('#pf-div-freq');
+    if (totalV <= 0) {
+      freqWrap.innerHTML = '<div class="mb-empty" style="border:none">데이터가 없어요</div>';
+    } else {
+      const entries = Object.entries(freqSum).sort((a, b) => b[1] - a[1]);
+      const top = entries[0];
+      const insight = {
+        월배당: '월배당 비중이 높아 매달 고르게 배당이 들어오는 구조예요.',
+        분기배당: '분기배당 비중이 높아 3·6·9·12월 무렵에 배당이 집중되는 패턴이에요. 월배당 ETF(예: JEPQ, 커버드콜 ETF)를 더하면 매달 고르게 받을 수 있어요.',
+        연배당: '연배당 비중이 높아 배당이 1년에 한 번 몰려 들어와요.',
+        배당없음: '배당이 없는 성장형 자산 위주예요.',
+      }[top[0]];
+      freqWrap.innerHTML = entries.map(([label, v]) => {
+        const p = (v * 100 / totalV);
+        return `
+          <div class="pf-freq-row">
+            <span class="pf-freq-label">${label}</span>
+            <span class="pf-freq-track"><span class="pf-freq-fill" style="width:${p.toFixed(1)}%"></span></span>
+            <span class="pf-freq-pct">${p.toFixed(1)}%</span>
+          </div>`;
+      }).join('') + `<div class="pf-form-hint" style="margin-top:12px">💡 ${insight}</div>`;
+    }
+
+    // 최근 배당 내역 (보유수량 × 회차 배당금 — 추정치)
+    const recent = [];
+    for (const s of sources) {
+      for (const e of s.divEvents) {
+        recent.push({
+          name: s.name,
+          isUs: s.currency === 'USD',
+          date: e.date,
+          amount: e.amount * s.qty * rate(s.currency),
+          freq: freqOf(s.divEvents),
+        });
+      }
+    }
+    recent.sort((a, b) => b.date - a.date);
+    const listWrap = root.querySelector('#pf-div-recent');
+    if (recent.length === 0) {
+      listWrap.innerHTML = '<div class="mb-empty" style="border:none">최근 1년 배당 내역이 없어요</div>';
+    } else {
+      const pad = (n) => String(n).padStart(2, '0');
+      listWrap.innerHTML = recent.slice(0, 8).map((r) => {
+        const d = new Date(r.date);
+        return `
+          <div class="pf-div-row">
+            <span class="pf-badge ${r.isUs ? 'us' : 'kr'}">${r.isUs ? 'US' : 'KR'}</span>
+            <div class="pf-div-main">
+              <div class="pf-div-name">${r.name}</div>
+              <div class="pf-div-sub">${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} · ${r.freq}</div>
+            </div>
+            <span class="pf-div-amt">+${won(r.amount)}</span>
+          </div>`;
+      }).join('')
+        + '<div class="pf-form-hint" style="margin-top:10px">배당락일 기준, 현재 보유수량 × 회차 배당금 추정치예요. 실수령액은 가계부의 \'배당\' 수입 기록으로 집계돼요.</div>';
+    }
   }
 
   // ── 절세계좌 섹션 ─────────────────────────────────────────
@@ -758,6 +863,21 @@ MB.render.portfolio = (() => {
       <div id="pf-body">
         <div class="mb-cards" id="pf-cards"></div>
         <div class="mb-cards" id="pf-cards2" style="margin-top:14px"></div>
+        <div class="mb-section-title">💸 배당 수입</div>
+        <div class="mb-charts">
+          <div class="mb-chart-card wide">
+            <div class="chart-title">월별 예상 배당 추이 (₩) — 최근 1년 실제 지급월 기준, 이번 달은 초록색</div>
+            <div class="chart-body" id="pf-div-monthly"></div>
+          </div>
+          <div class="mb-chart-card">
+            <div class="chart-title">배당주기 분포 (평가금액 기준)</div>
+            <div id="pf-div-freq" style="padding-top:6px"></div>
+          </div>
+          <div class="mb-chart-card">
+            <div class="chart-title">최근 배당 내역 (보유수량 기준 추정)</div>
+            <div id="pf-div-recent"></div>
+          </div>
+        </div>
         <div class="mb-section-title">🍩 자산 비중</div>
         <div class="mb-charts">
           <div class="mb-chart-card"><div class="chart-title">포트폴리오 비중 (원화 평가금액 기준)</div><div class="chart-body" id="pf-weight"></div></div>

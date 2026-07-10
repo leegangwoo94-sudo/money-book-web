@@ -34,6 +34,18 @@
 - 모바일(≤768px): 사이드바가 상단 가로 메뉴로 자동 전환
 - 접속정보 변경/가족 코드 변경 시: setup.html로 새 블롭 생성 → mb-config.js 교체 → push
 
+  - 배당 수입 섹션 (2026-07-10, 포트폴리오 내): 월별 예상 배당 차트(야후 divEvents의 지급월 기준) +
+    배당주기 분포(1년 배당횟수로 월/분기/연 분류, 평가금액 비중 HTML 막대) + 최근 배당 내역(보유수량×회차 배당금 추정).
+    일반투자 보유종목 + 절세계좌 보유종목 합산
+  - `js/render/etfcompare.js` — ETF 비교 페이지 (2026-07-10): 검색으로 최대 4개 선택(미국 포함),
+    수익률 비교 차트(TR/가격 토글, 기간 1M~MAX, 지수 오버레이 ^KS200/^GSPC/^NDX, 최저/최고/MDD),
+    상세 비교 표(국내 ETF는 네이버 모바일 API로 순자산/총보수/운용사/기초지수/기간수익률, 미국은 야후 시계열 계산),
+    구성종목 TOP5(네이버 etfTop10MajorConstituentAssets)
+  - **시세 프록시**: 야후/네이버 모두 CORS 차단 → MB.pf의 proxyChain이
+    ① 사용자 Supabase Edge Function `proxy`(supabase/functions/proxy/index.ts, 대시보드에서 배포 — 화이트리스트 방식)
+    ② 직접 ③ allorigins ④ codetabs 순으로 폴백, 2회전 재시도. 공개 프록시는 rate limit으로 자주 죽으므로
+    Edge Function 배포가 사실상 필수. 시세 캐시는 localStorage 'mb.quote2.*' 10분
+
 ## 데이터 계약 (중요)
 - Supabase `public.transactions`: member_id, local_id, amount, type('expense'|'income'), category_name, category_emoji, memo, date('yyyy-MM-dd'), synced_at. PK(member_id, local_id)
 - 앱이 **멤버별 전체 미러링(delete→insert)** 으로 업로드하므로 **홈페이지는 조회 전용**.
