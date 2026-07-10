@@ -377,6 +377,157 @@ body {
   padding: 14px 18px;
 }
 
+/* ── 절세계좌 폼(모달) ── */
+.pf-form { max-height: 90vh; overflow-y: auto; }
+
+.pf-form label {
+  display: block;
+  color: var(--text-dim);
+  font-size: 13px;
+  font-weight: 600;
+  margin: 12px 0 6px;
+}
+
+.pf-form select {
+  width: 100%;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text);
+  padding: 12px 14px;
+  font-size: 15px;
+}
+
+.pf-form input { margin-bottom: 0; }
+
+.pf-form .pf-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 500;
+  margin-top: 14px;
+  cursor: pointer;
+}
+
+.pf-form .pf-check input { width: auto; margin: 0; }
+
+.pf-form-actions { display: flex; gap: 10px; margin-top: 18px; }
+.pf-form-actions button { flex: 1; margin-top: 0; }
+.pf-form-actions .secondary { background: var(--surface-2); color: var(--text); }
+
+.pf-mini-btn {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  border-radius: 8px;
+  padding: 5px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.pf-mini-btn:hover { color: var(--text); border-color: var(--text-dim); }
+
+.pf-form-row { display: flex; gap: 10px; }
+
+/* 종목 검색 드롭다운 */
+.pf-search-wrap { position: relative; }
+
+.pf-suggest {
+  position: absolute;
+  top: calc(100% - 6px);
+  left: 0;
+  right: 0;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  max-height: 230px;
+  overflow-y: auto;
+  z-index: 20;
+  display: none;
+}
+
+.pf-suggest .item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  font-size: 14px;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pf-suggest .item:hover { background: var(--surface); }
+
+.pf-picked {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-top: 10px;
+  font-size: 14px;
+}
+
+/* 계좌 보유종목 리스트 (모달) */
+.pf-holding-list { margin: 6px 0 4px; }
+
+.pf-holding-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 4px;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+}
+
+.pf-holding-row .ph-name { font-weight: 700; flex-shrink: 0; }
+.pf-holding-row .ph-detail { color: var(--text-dim); flex: 1; font-size: 13px; }
+
+.pf-holding-empty {
+  color: var(--text-dim);
+  font-size: 13px;
+  padding: 12px 4px;
+}
+
+.pf-stock-note {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 절세계좌 입력 가이드 */
+.pf-guide {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px 22px;
+  margin-bottom: 14px;
+  font-size: 13.5px;
+  line-height: 1.75;
+  color: var(--text-dim);
+}
+
+.pf-guide > b { color: var(--text); display: block; margin-top: 14px; font-size: 14px; }
+.pf-guide > b:first-child { margin-top: 0; }
+.pf-guide ol, .pf-guide ul { margin: 6px 0 0 20px; }
+.pf-guide li { margin-bottom: 3px; }
+.pf-guide li b { color: var(--text); }
+
+.pf-form-hint {
+  color: var(--text-dim);
+  font-size: 13px;
+  line-height: 1.6;
+  margin-bottom: 4px;
+}
+
+.pf-form-hint b { color: var(--text); }
+
 /* ── 게이트(가족 코드) ── */
 .mb-gate-overlay {
   position: fixed;

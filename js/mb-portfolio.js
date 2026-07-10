@@ -118,8 +118,94 @@ MB.pf = (() => {
     return (await quote('KRW=X')).price;
   }
 
+  // ── 종목 검색 (stocks-all.js 데이터 — 앱의 검색과 동일 원천) ──
+  // 반환: { name(표시명: 국내=종목명, 미국=티커), symbol, currency, label }
+  function searchStocks(query, limit = 20) {
+    const q = query.trim().toLowerCase();
+    if (!q || !MB.stockData) return [];
+    const starts = [];
+    const contains = [];
+    const push = (sym, name, isKr) => {
+      const item = {
+        name: isKr ? name : sym,
+        symbol: sym,
+        currency: isKr ? 'KRW' : 'USD',
+        label: name,
+        market: isKr ? 'KR' : 'US',
+      };
+      const n = name.toLowerCase();
+      const s = sym.toLowerCase();
+      if (n.startsWith(q) || s.startsWith(q)) starts.push(item);
+      else if (n.includes(q) || s.includes(q)) contains.push(item);
+    };
+    for (const [sym, name] of MB.stockData.kr) {
+      if (starts.length >= limit) break;
+      push(sym, name, true);
+    }
+    for (const [sym, name] of MB.stockData.us) {
+      if (starts.length >= limit) break;
+      push(sym, name, false);
+    }
+    return [...starts, ...contains].slice(0, limit);
+  }
+
+  // ── 절세계좌 (웹에서 직접 입력 — pf_tax_accounts + pf_tax_holdings) ──
+  const tax = (() => {
+    const T = 'pf_tax_accounts';
+    const TH = 'pf_tax_holdings';
+    const missing = (e) => e?.code === 'PGRST205' || e?.code === '42P01';
+
+    async function list(member = null) {
+      let q = MB.db.client.from(T).select('*').order('member').order('account_type');
+      if (member) q = q.eq('member', member);
+      const { data, error } = await q;
+      if (error) {
+        if (missing(error)) return { ready: false, rows: [] }; // 테이블 미생성
+        throw error;
+      }
+      // 계좌별 보유종목 (테이블 없으면 빈 목록으로 동작)
+      let holdings = [];
+      if (data.length > 0) {
+        const { data: h, error: he } = await MB.db.client.from(TH)
+          .select('*').in('account_id', data.map((r) => r.id));
+        if (he && !missing(he)) throw he;
+        holdings = h ?? [];
+      }
+      return { ready: true, rows: data, holdings };
+    }
+
+    async function insertHolding(row) {
+      const { data, error } = await MB.db.client.from(TH).insert(row).select().single();
+      if (error) throw error;
+      return data;
+    }
+
+    async function removeHolding(id) {
+      const { error } = await MB.db.client.from(TH).delete().eq('id', id);
+      if (error) throw error;
+    }
+
+    async function insert(row) {
+      const { error } = await MB.db.client.from(T).insert(row);
+      if (error) throw error;
+    }
+
+    async function update(id, row) {
+      const { error } = await MB.db.client.from(T)
+        .update({ ...row, updated_at: new Date().toISOString() }).eq('id', id);
+      if (error) throw error;
+    }
+
+    async function remove(id) {
+      const { error } = await MB.db.client.from(T).delete().eq('id', id);
+      if (error) throw error;
+    }
+
+    return { list, insert, update, remove, insertHolding, removeHolding };
+  })();
+
   return {
     fetchTrades, fetchMembers, lastSynced, fetchDividendIncome,
-    computeHoldings, symbolFor, quote, fx,
+    computeHoldings, symbolFor, quote, fx, tax, searchStocks,
   };
 })();

@@ -23,6 +23,14 @@
     국내 종목명→야후 심볼 맵은 stocks-kr.js(3,744종목, 앱 assets/stocks.json과 같은 원천이라 이름 1:1 매칭).
     연간 예상배당 = 야후 최근 1년 주당 배당 × 수량. '실제 배당' = transactions 수입 중 카테고리/메모에 '배당' 포함 합계.
     시세 실패 종목은 평단으로 표시(※ 마크). 모바일에서 표는 .mb-table-wrap 내부 스크롤
+  - 절세계좌 (2026-07-08): 포트폴리오 페이지에서 웹으로 직접 입력하는 유일한 데이터.
+    테이블 `pf_tax_accounts` + `pf_tax_holdings`(계좌별 보유종목, FK cascade) — DDL: supabase/pf_tax_accounts.sql
+    (사용자가 SQL Editor 실행 필요, 미생성 시 안내문 표시. v1을 이미 실행했다면 파일 하단 ALTER 블록 사용).
+    연금저축/IRP/퇴직연금 DC/ISA CRUD(MB.pf.tax) + 계좌별 보유종목을 종목 검색(MB.pf.searchStocks,
+    js/stocks-all.js — stocks-kr.js 대체, MB.stockData+MB.krSymbols)으로 입력 → 평가금액 = 예수금 + Σ(수량×시세×환율)
+    자동 계산(보유종목 없으면 직접입력 value 사용). 총자산 합산 + 멤버별 세액공제 계산 카드.
+    세제 상수는 portfolio.js의 TAX_POLICY (2026 현행: 연금 600만/합산 900만(IRP·DC 본인납입 포함), 16.5%/13.2%,
+    ISA 비과세 200만/서민 400만 + 초과 9.9% — ISA 상향 개정안은 국회 미통과라 미반영, 개정 시 상수만 수정)
 - 모바일(≤768px): 사이드바가 상단 가로 메뉴로 자동 전환
 - 접속정보 변경/가족 코드 변경 시: setup.html로 새 블롭 생성 → mb-config.js 교체 → push
 
