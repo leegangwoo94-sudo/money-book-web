@@ -61,6 +61,7 @@
 
 ## 배포
 - `git push` → GitHub Pages 자동 반영 (gh CLI: `C:\Program Files\GitHub CLI\gh.exe`, 계정 leegangwoo94-sudo 로그인됨)
+- **JS/CSS를 수정해서 배포할 때는 index.html의 `?v=` 버전 문자열을 반드시 올릴 것** (브라우저 캐시 무효화 — 안 올리면 방문자가 옛 JS로 동작해 "기능이 안 된다"는 문제 발생)
 - git user: leegangwoo94-sudo / leegangwoo94@gmail.com (저장소 로컬 설정 완료)
 
 ## 남은 작업 후보

@@ -5,7 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex, nofollow">
   <title>우리집 가계부</title>
-  <link rel="stylesheet" href="css/mb-style.css">
+  <!-- ?v= 버전은 배포 시 올려서 브라우저 캐시 무효화 -->
+  <link rel="stylesheet" href="css/mb-style.css?v=20260710a">
 </head>
 <body>
   <div class="mb-layout">
@@ -16,15 +17,15 @@
   <!-- supabase-js v2 + Chart.js (CDN) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-  <script src="js/mb-config.js"></script>
-  <script src="js/mb-gate.js"></script>
-  <script src="js/mb-core.js"></script>
-  <script src="js/stocks-all.js"></script>
-  <script src="js/mb-portfolio.js"></script>
-  <script src="js/render/nav.js"></script>
-  <script src="js/render/dashboard.js"></script>
-  <script src="js/render/portfolio.js"></script>
-  <script src="js/render/etfcompare.js"></script>
+  <script src="js/mb-config.js?v=20260710a"></script>
+  <script src="js/mb-gate.js?v=20260710a"></script>
+  <script src="js/mb-core.js?v=20260710a"></script>
+  <script src="js/stocks-all.js?v=20260710a"></script>
+  <script src="js/mb-portfolio.js?v=20260710a"></script>
+  <script src="js/render/nav.js?v=20260710a"></script>
+  <script src="js/render/dashboard.js?v=20260710a"></script>
+  <script src="js/render/portfolio.js?v=20260710a"></script>
+  <script src="js/render/etfcompare.js?v=20260710a"></script>
   <script>
     (async () => {
       const creds = await MB.gate.init();   // 가족 코드 게이트 통과까지 대기

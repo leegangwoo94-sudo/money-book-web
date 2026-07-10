@@ -299,9 +299,12 @@ MB.render.etfCompare = (() => {
       Chart.defaults.animation = false;
     }
 
-    // 검색
+    // 검색 (Enter = 첫 번째 결과 선택)
     const q = root.querySelector('#ec-q');
     const sug = root.querySelector('#ec-sug');
+    q.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') sug.querySelector('.item[data-i="0"]')?.click();
+    });
     q.addEventListener('input', () => {
       const text = q.value.trim();
       if (!text) { sug.style.display = 'none'; return; }
